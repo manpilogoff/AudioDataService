@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Доступ к YouTube плейлистам</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+<button id="authorize_button">Получить доступ к плейлистам</button>
+
+<script>
+    const CLIENT_ID = '800205820815-vrvba5e0sm3ucgnev6h44rheivbvdbds.apps.googleusercontent.com';
+    const API_KEY = 'AIzaSyBk90uSb-dNVRxzDCrZ1j8jEltYrsMfWnI';
+    const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
+
+    let tokenClient;
+
+    function gapiLoaded() {
+        gapi.load('client', initializeGapiClient);
+    }
+
+    async function initializeGapiClient() {
+        await gapi.client.init({
+            apiKey: API_KEY,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'],
+        });
+    }
+
+    window.onload = () => {
+        gapiLoaded();
+
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: async (tokenResponse) => {
+                if (tokenResponse.error) {
+                    alert('Ошибка авторизации: ' + tokenResponse.error);
+                    return;
+                }
+                await listPlaylists();
+            },
+        });
+
+        document.getElementById('authorize_button').onclick = () => {
+            tokenClient.requestAccessToken({prompt: ''});
+        };
+    };
+
+    async function listPlaylists() {
+        try {
+            let playlists = [];
+            let nextPageToken = '';
+            do {
+                const response = await gapi.client.youtube.playlists.list({
+                    part: 'snippet,contentDetails',
+                    mine: true,
+                    maxResults: 50, // максимальное значение - 50
+                    pageToken: nextPageToken
+                });
+                if (response.result.items) {
+                    playlists = playlists.concat(response.result.items);
+                }
+                nextPageToken = response.result.nextPageToken;
+            } while (nextPageToken);
+
+            if (playlists.length === 0) {
+                alert('Плейлисты не найдены.');
+                return;
+            }
+
+            let message = 'Ваши плейлисты:\n\n';
+            playlists.forEach(pl => {
+                message += `${pl.snippet.title} (видео: ${pl.contentDetails.itemCount})\n`;
+            });
+            document.body.append(message);
+
+            // Пример: получаем видео из первого плейлиста
+            await listPlaylistItems(playlists[5].id);
+
+        } catch (err) {
+            alert('Ошибка при получении плейлистов: ' + err.message);
+        }
+    }
+
+    async function listPlaylistItems(playlistId) {
+        try {
+            let nextPageToken = '';
+            let videos = [];
+            do {
+                const response = await gapi.client.youtube.playlistItems.list({
+                    part: 'snippet',
+                    playlistId: playlistId,
+                    maxResults: 50,
+                    pageToken: nextPageToken
+                });
+                const items = response.result.items;
+                if (items) {
+                    items.forEach(item => {
+                        const videoId = item.snippet.resourceId.videoId;
+                        const videoTitle = item.snippet.title;
+                        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                        videos.push({title: videoTitle, url: videoUrl});
+                    });
+                }
+                nextPageToken = response.result.nextPageToken;
+            } while (nextPageToken);
+
+            if (videos.length === 0) {
+                alert('Видео в плейлисте не найдены.');
+                return;
+            }
+            let message = `Видео в плейлисте:\n\n`;
+            videos.forEach(video => {
+                message += `${video.url}\n\n`;
+            });
+            document.body.append(message);
+
+        } catch (err) {
+            alert('Ошибка при получении видео плейлиста: ' + err.message);
+        }
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Music Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html {
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+
+        body { font-family: Arial, sans-serif; background: #121212; color: white; margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw; }
+        .container { height: 100vh; width: 100vw; display: flex; flex-direction: column; position: relative; }
+        .audio-player { width: 100%; height: 5%; padding: 5%; background: rgba(40, 40, 40, 0.81); position: fixed; z-index: 18; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100vw; background: #1d1d1d; display: flex; justify-content: center; align-items: center; z-index: 20; }
+        .nav-buttons { display: flex; justify-content: center; align-items: center; gap: 2vh; width: 100vw; height: 9vh; }
+        .nav-buttons button { color: white; font-size: x-large; background: none; border: none; cursor:pointer; }
+        .search-box { position: absolute; display: flex; flex-direction: row; width: 0; overflow: hidden; transition: width 0.4s ease-in-out; background: #282828; border-radius: 4px; box-shadow: 0 0 3px; }
+        .search-box.active { width: 80%; }
+        #searchInput { width: 100%; padding: 10px; background: transparent; border: none; color: white; font-size: 15px; }
+        #searchButton { background: none; border: none; color: #1DB954; font-size: 20px; cursor: pointer; }
+        #now_playing { position: fixed; width: 100vw; max-height: 100vh; background: #060606; transform: translateY(100%); transition: transform 0.5s; z-index: 20; }
+        #now_playing.active { transform: translateY(0%); }
+
+        #now_play_title_container {
+            width: 85%;
+            display: flex;
+            justify-content: center;
+            height: 35%;
+            text-align: center;
+            padding: 2%;
+            overflow: hidden;
+        }
+
+        #now_play_title {
+            height: 18%;
+            position: relative;
+            text-shadow: 0 3px 3px black, 0 0 5px white;
+            font-size: xx-large;
+            font-family: system-ui;
+            white-space: nowrap;
+        }
+
+        #now_play_artist_container {
+            display: flex;
+            gap: 5px;
+            padding: 2%;
+            text-shadow: 0 4px 3px black, 0 0 4px white;
+        }
+
+        #now_play_artist {
+            text-shadow: 0 4px 1px black, 0 0 4px white;
+            font-size: larger;
+
+        }
+
+        #now_play_album_container {
+            width: 100%;
+            display: flex;
+            gap: 3%;
+            padding: 2%;
+            flex-direction: row;
+        }
+        #now_play_album {
+            white-space: nowrap;
+            font-size: larger;
+        }
+
+        .results-panel { position: fixed; width: 100vw; max-height: 100vh; background: #1a1a1a; transform: translateY(100%); transition: 0.3s ease-in-out; overflow-y: auto; z-index: 15; }
+        .results-panel.active { transform: translateY(0); }
+        .track { padding: 15px; cursor: pointer; font-size: 17px; display: flex; align-items: center; gap: 10px; position: relative; }
+        .track img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+        .track:hover .play-icon { opacity: 1; }
+        .track .play-icon { position: absolute; color: white; font-size: 1.2em; opacity: 0; transition: opacity 0.3s linear; margin: 5% }
+        .track.playing { color: #00ff6f; }
+        #current_play_container { width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #current_play_container_cover_img {
+            margin: 1%;
+            box-shadow: 0 0 5px 1px #ffffff;
+            border-radius: 3%;
+            overflow: hidden;
+        }
+
+        #custom-audio-ui { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+
+        .fas {
+            pointer-events: none;
+            outline: none;
+        }
+
+        .fa {
+            pointer-events: none;
+            outline: none;
+        }
+
+        button { outline: none; }
+
+        #current_play_container_img {
+            width: 100%;
+            height: 100%;
+        }
+
+        #timebar_container { display: flex; align-items: center; gap: 17px; width: 90%; }
+
+        #custom-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin: 20px 0;
+        }
+
+        #custom-controls button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        #custom-controls button:hover {
+            transform: scale(1.2);
+        }
+
+
+        #now_play_info {
+            text-align: center;
+            margin-bottom: -20px;
+            background: linear-gradient(to top, black, #1a1a1a63);
+            backdrop-filter: blur(2px);
+            width: 100%;
+            height: 23%;
+            top: -23%;
+            position: relative;
+        }
+
+        #now_play_artist.clickable {
+            color: #ffffff;
+        }
+
+        #custom-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px; /* фиксированное расстояние */
+            margin: 20px 0;
+        }
+
+        #custom-controls div {
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        #custom-controls div:hover {
+            transform: scale(1.2);
+        }
+
+        #timebar {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        #timebarProgress {
+            height: 100%;
+            width: 0;
+            background: #1DB954;
+            border-radius: 3px;
+            transition: width 0.3s linear;
+
+        }
+        #artist_panel {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #111;
+            color: white;
+            transform: translateY(100%);
+            transition: transform 0.5s;
+            overflow: hidden;
+            z-index: 30;
+        }
+        #artist_panel.active { transform: translateY(0); }
+
+        #artist_header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid #333;
+            height: 20%;
+            width: 100%;
+            background: linear-gradient(45deg, black, transparent);
+            white-space: nowrap;
+        }
+        #artist_img {
+            width: 30%;
+            border: 1px solid red;
+            height: 99%;
+            position: relative;
+        }
+
+        #artist_name_container {
+            flex: 1;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        #artist_add_btn {
+            cursor: pointer;
+            font-size: 18px;
+            color: #1db954;
+        }
+        #artist_close_btn {
+            text-align: center;
+            cursor: pointer;
+            position: absolute;
+            height: 15%;
+            width: 100%;
+            font-size: x-large;
+            color: red;
+        }
+
+        #artist_albums_container {
+            height: 70%;
+            width: 100%;
+            overflow-y: scroll;
+        }
+
+        .album-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+        }
+        .album-item img {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            backdrop-filter: blur(10px);
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+            transition-duration: .5s;
+            transition-property: all;
+            transition-behavior: allow-discrete;
+            opacity: 0;
+            transform: translateY(100%);
+        }
+
+        .overlay.active {
+            display: flex;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+
+
+        #album_content {
+            width: 90%;
+            max-height: 80%;
+            background: rgba(20,20,20,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        #album_img {
+            width: 80%; height: 20%;
+            margin: 0 auto;
+        }
+        #album_title {
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #444;
+            margin: 10px 0;
+            padding-bottom: 5px;
+        }
+        .track-item {
+            padding: 8px;
+            cursor: pointer;
+            font-family: 'FontAwesome',serif;
+            font-size: small;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        #album_tracks {
+            overflow-y: scroll;
+        }
+
+        .track-item:hover { background: #333; }
+
+        #album_close_btn {
+            margin-top: auto;
+            text-align: center;
+            cursor: pointer;
+            color: #ff0000;
+        }
+
+        .active-track { color: #02fa5b !important; text-shadow:0 0 2px #02f656; }
+        .play-icon { transition:0.2s; }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="audio-player" id="audioPlayer">
+        <div class="search-box" id="searchBox">
+            <input type="text" id="searchInput" placeholder="Поиск треков...">
+            <button id="searchButton" type="button"><i class="fas fa-search"></i></button>
+        </div>
+        <audio id="player" controls hidden></audio>
+    </div>
+
+    <div class="results-panel" id="results"></div>
+
+
+
+    <!-- панель артиста -->
+    <div id="artist_panel" class="panel">
+        <div id="artist_header">
+            <img id="artist_img" src="https://via.placeholder.com/60" alt="Artist" />
+            <div id="artist_name_container">Artist</div>
+            <div id="artist_add_btn"><i class="fa fa-plus"></i></div>
+        </div>
+        <div id="artist_albums_container"></div>
+        <div id="artist_close_btn"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+
+    <!-- overlay для альбома -->
+    <div id="album_overlay" class="overlay">
+        <div id="album_content">
+            <img id="album_img" src="https://via.placeholder.com/80" alt="Album" />
+            <div id="album_title"></div>
+            <div id="album_tracks"></div>
+            <div id="album_close_btn"><i class="fa-solid fa-xmark" style="color: red"></i></div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-buttons" id="navButtons">
+            <button id="showNowPlaying"><i class="fas fa-headphones"></i></button>
+            <button id="playlistButton"><i class="fas fa-list"></i></button>
+            <button id="noteButton"><i class="fas fa-music"></i></button>
+            <button id="searchToggleButton"><i class="fas fa-search"></i></button>
+        </div>
+    </div>
+
+    <!-- NOW PLAYING -->
+    <div class="now_playing-panel" id="now_playing">
+        <div id="current_play_container">
+            <div id="current_play_container_cover_img">
+                <img id="current_play_container_img" src="" alt="cover">
+            </div>
+
+            <!-- Информация -->
+            <div id="now_play_info">
+
+                <div id="now_play_title_container">
+                    <div id="now_play_title"></div>
+                </div>
+
+                <div id="now_play_artist_container">
+                    <i class="fa-solid fa-user"></i>
+                    <div id="now_play_artist" class="clickable"></div>
+                </div>
+
+                <div id="now_play_album_container">
+                    <i class="fa-solid fa-compact-disc"></i>
+                    <div id="now_play_album"></div>
+                </div>
+
+            </div>
+
+            <!-- Кнопки -->
+            <div id="custom-controls">
+                <div id="prevTrack"><i class="fas fa-backward"></i></div>
+                <div id="customPlayPause"><i class="fas fa-play"></i></div>
+                <div id="nextTrack"><i class="fas fa-forward"></i></div>
+            </div>
+
+            <!-- Таймбар -->
+            <div id="timebar_container">
+                <span id="currentTime">00:00</span>
+                <div id="timebar">
+                    <div id="timebarProgress"></div>
+                </div>
+                <span id="totalTime">00:00</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+    const player = document.getElementById('player');
+    const playPauseBtn = document.getElementById('customPlayPause');
+    const prevBtn = document.getElementById('prevTrack');
+    const nextBtn = document.getElementById('nextTrack');
+    const currentTimeLabel = document.getElementById('currentTime');
+    const totalTimeLabel = document.getElementById('totalTime');
+    const timebar = document.getElementById('timebar');
+    const timebarProgress = document.getElementById('timebarProgress');
+    const results = document.getElementById('results');
+    const nowPlaying = document.getElementById('now_playing');
+    const searchBox = document.getElementById('searchBox');
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.getElementById('searchButton');
+    const searchToggleButton = document.getElementById('searchToggleButton');
+    const showNowPlayingBtn = document.getElementById('showNowPlaying');
+    const artistPanel = document.getElementById('artist_panel');
+    const albumOverlay = document.getElementById('album_overlay');
+
+    let hls = null;
+    let currentTrackIndex = -1;
+    let searchResults = [];
+    let albumTrackList = [];
+    let trackList = [];
+    let isSearchActive = false;
+
+    // show/hide NowPlaying via nav button
+    showNowPlayingBtn.addEventListener("click", () => {
+        nowPlaying.classList.add("active");
+        showNowPlayingBtn.style.display = "none";
+    });
+    function hideNowPlayingPanel() {
+        nowPlaying.classList.remove("active");
+        showNowPlayingBtn.style.display = "inline-block";
+    }
+    function showNowPlayingPanel() {
+        nowPlaying.classList.add("active");
+        showNowPlayingBtn.style.display = "none";
+    }
+
+    // Play/Pause
+    playPauseBtn.onclick = () => {
+        if (player.paused) {
+            player.play();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            setActiveHighlight(trackList[currentTrackIndex]?.id, true);
+        } else {
+            player.pause();
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            setActiveHighlight(trackList[currentTrackIndex]?.id, false);
+        }
+    };
+
+    // Prev/Next
+    prevBtn.addEventListener('click', () => {
+        if (currentTrackIndex > 0) playTrackByIndex(currentTrackIndex - 1);
+    });
+    nextBtn.addEventListener('click', () => {
+        if (currentTrackIndex < trackList.length - 1) playTrackByIndex(currentTrackIndex + 1);
+    });
+
+    // Progress
+    player.ontimeupdate = () => {
+        if (player.duration) {
+            const progress = (player.currentTime / player.duration) * 100;
+            timebarProgress.style.width = progress + "%";
+            currentTimeLabel.textContent = formatTime(player.currentTime);
+        }
+    };
+    player.onloadedmetadata = () => {
+        totalTimeLabel.textContent = formatTime(player.duration);
+    };
+    function formatTime(time) {
+        if (isNaN(time)) return "00:00";
+        const mins = Math.floor(time / 60).toString().padStart(2, '0');
+        const secs = Math.floor(time % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+    }
+    timebar.addEventListener('click', (e) => {
+        const rect = timebar.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        player.currentTime = percent * player.duration;
+    });
+
+    // SEARCH toggle
+    searchToggleButton.addEventListener('click', () => {
+        hideNowPlayingPanel();
+        isSearchActive = !isSearchActive;
+        searchBox.classList.toggle('active', isSearchActive);
+        if (isSearchActive) {
+            searchInput.focus();
+            results.classList.add("active");
+        } else {
+            searchInput.value = '';
+            results.classList.remove("active");
+        }
+    });
+    searchButton.addEventListener('click', search);
+    searchInput.addEventListener('keypress', e => { if (e.key === "Enter") search(); });
+
+    async function search() {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        results.innerHTML = '<div class="track">Поиск...</div>';
+        results.classList.add('active');
+        try {
+            const url = new URL('/search', window.location.origin);
+            url.searchParams.set('query', encodeURIComponent(query));
+            url.searchParams.set('limit', '20');
+            const response = await fetch(url.toString(), { method: 'GET' });
+            if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+            const rawJson = await response.text();
+            const data = JSON.parse(rawJson);
+            displaySearchResults(data);
+        } catch (err) {
+            results.innerHTML = `<div class="track">Ошибка: ${err.message}</div>`;
+        }
+    }
+
+    function displaySearchResults(data) {
+        results.innerHTML = "";
+        searchResults = [];
+        const items = data.tracks?.items || [];
+        if (!items.length) {
+            results.innerHTML = '<div class="track">Ничего не найдено</div>';
+            return;
+        }
+        items.forEach((t, idx) => {
+            const trackEl = document.createElement("div");
+            trackEl.className = "track";
+            trackEl.dataset.id = t.id;
+            trackEl.innerHTML = `
+        <img src="${t.album?.image?.small || ''}" alt="">
+        <i class="fas fa-play play-icon"></i>
+        <div class="track-text"><strong>${t.title}</strong><br><small>${t.performer?.name || ''} • ${t.album?.title || ''}</small></div>`;
+            results.appendChild(trackEl);
+            const trackObj = {
+                id: t.id,
+                artistId: t.performer?.id,
+                title: t.title,
+                artist: t.performer?.name,
+                album: t.album?.title,
+                cover: t.album?.image?.large || t.album?.image?.small
+            };
+            searchResults.push(trackObj);
+            trackEl.addEventListener("click", () => playTrackByIndex(idx, "search"));
+        });
+    }
+
+    function updateNowPlayingUI(track) {
+        document.getElementById("current_play_container_img").src = track.cover || "";
+        document.getElementById("now_play_title").textContent = track.title || "";
+        document.getElementById("now_play_artist").textContent = track.artist || "";
+        document.getElementById("now_play_album").textContent = track.album || "";
+    }
+
+    // === HIGHLIGHT ACTIVE TRACK ===
+    function setActiveHighlight(trackId, isPlaying) {
+        document.querySelectorAll(".track, .track-item").forEach(el => {
+            if (String(el.dataset.id) === String(trackId)) {
+                if (isPlaying) {
+                    el.classList.add("active-track");
+                    if (el.classList.contains("track-item")) {
+                        el.innerHTML = `<i class="fas fa-pause" style="color:#1DB954;text-shadow:0 0 2px #1DB954;margin-right:6px;"></i>${el.textContent}`;
+                    } else {
+                        const icon = el.querySelector(".play-icon");
+                        if (icon) {
+                            icon.classList.remove("fa-play");
+                            icon.classList.add("fa-pause");
+                            icon.style.color="#1DB954";
+                            icon.style.textShadow="0 0 2px #1DB954";
+                        }
+                    }
+                }
+            } else {
+                el.classList.remove("active-track");
+                if (el.classList.contains("track-item")) {
+                    el.textContent = el.textContent.replace(/^\s*⏸\s*/, "");
+                } else {
+                    const icon = el.querySelector(".play-icon");
+                    if (icon) {
+                        icon.classList.remove("fa-pause");
+                        icon.classList.add("fa-play");
+                        icon.style.color="";
+                        icon.style.textShadow="";
+                    }
+                }
+            }
+        });
+    }
+
+    async function playTrackByIndex(index, listType="search") {
+        const list = listType === "album" ? albumTrackList : searchResults;
+        const track = list[index];
+        if (!track) return;
+        currentTrackIndex = index;
+        trackList = list;
+        updateNowPlayingUI(track);
+        await playTrack(track.id, track.artistId);
+        setActiveHighlight(track.id, true);
+        showNowPlayingBtn.style.display = "inline-block";
+    }
+
+    async function playTrack(trackId, artistId) {
+        try {
+            if (hls) { hls.destroy(); hls = null; }
+            player.pause(); player.src='';
+            const params = new URLSearchParams({ track_id: trackId, format_id:27, artist_id: artistId });
+            const res = await fetch('/play?'+params.toString());
+            if (!res.ok) throw new Error(`Ошибка воспроизведения: ${res.status}`);
+            const data = await res.json();
+            if (data.url.includes(".m3u8")) {
+                if (Hls.isSupported()) {
+                    hls=new Hls(); hls.loadSource(data.url); hls.attachMedia(player);
+                    hls.on(Hls.Events.MANIFEST_PARSED, ()=>player.play());
+                } else { player.src=data.url; player.play(); }
+            } else { player.src=data.url; player.play(); }
+            playPauseBtn.innerHTML='<i class="fas fa-pause"></i>';
+        } catch(err){ console.error("Ошибка playTrack:", err); }
+    }
+
+    // artist click
+    document.getElementById("now_play_artist").addEventListener("click", async (e) => {
+        e.preventDefault();
+        const current = trackList[currentTrackIndex];
+        if (!current?.artistId) return;
+        try {
+            const res = await fetch(`/api/qobuz/artist/${current.artistId}`);
+            const data = await res.json();
+            document.getElementById("artist_name_container").innerText = data.name||"";
+            document.getElementById("artist_img").src = data.image||"https://via.placeholder.com/60";
+            const albums=data.albums?.items||[];
+            const c=document.getElementById("artist_albums_container");
+            c.innerHTML=albums.map(a=>`
+        <div class="album-item" data-id="${a.id}">
+          <img src="${a.image?.small||'https://via.placeholder.com/50'}">
+          <div class="album-title">${a.title}</div>
+        </div>`).join("");
+            c.querySelectorAll(".album-item").forEach(el=>{
+                el.addEventListener("click",()=>openAlbum(el.dataset.id));
+            });
+            artistPanel.classList.add("active"); nowPlaying.classList.remove("active");
+            showNowPlayingBtn.style.display="inline-block";
+        } catch(e){console.error(e);}
+    });
+
+    async function openAlbum(albumId){
+        const res=await fetch(`/api/qobuz/album/${albumId}`);
+        const data=await res.json();
+        document.getElementById("album_img").src=data.image?.large||"";
+        document.getElementById("album_title").textContent=data.title||"";
+        const tracks=data.tracks?.items||[];
+        albumTrackList=tracks.map(t=>({id:t.id,artistId:t.performer?.id,title:t.title,artist:t.performer?.name,album:data.title,cover:data.image?.large||""}));
+        const tc=document.getElementById("album_tracks");
+        tc.innerHTML=albumTrackList.map(t=>`<div class="track-item" data-id="${t.id}">${t.title}</div>`).join("");
+        tc.querySelectorAll(".track-item").forEach((el,idx)=>el.addEventListener("click",()=>{playTrackByIndex(idx,"album");}));
+
+        albumOverlay.classList.add("active");
+
+    }
+    document.getElementById("album_close_btn").addEventListener("click",()=>{
+
+
+        albumOverlay.classList.remove("active");
+
+
+    });
+    document.getElementById("artist_close_btn").addEventListener("click",()=>{artistPanel.classList.remove("active"); showNowPlayingPanel();});
+</script>
+</body>
+
+
+
+
+
+
+</html>

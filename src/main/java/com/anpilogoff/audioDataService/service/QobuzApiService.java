@@ -62,7 +62,7 @@ public class QobuzApiService {
      * @param formatId ID формата файла (например, 6 для FLAC 16-bit)
      * @return         Mono с JSON-строкой ответа от API Qobuz (ссылка и параметры файла)
      */
-    public Mono<String> getFileUrl(int trackId, int formatId) {
+    public Mono<String> getFileUrl(int trackId, Integer formatId) {
         long timestamp = Instant.now().getEpochSecond();
         String signatureRaw = String.format("trackgetFileUrlformat_id%sintentstreamtrack_id%s%s%s",
                 formatId, trackId, timestamp, properties.getAppSecret());
@@ -72,7 +72,7 @@ public class QobuzApiService {
         String url = UriComponentsBuilder.fromUriString(properties.getQobuzBaseUrl() + "track/getFileUrl")
                 .queryParam("app_id", properties.getAppId())
                 .queryParam("track_id", trackId)
-                .queryParam("format_id", formatId)
+                .queryParam("format_id", formatId != null ? formatId : 27)
                 .queryParam("intent", "stream")
                 .queryParam("request_ts", timestamp)
                 .queryParam("request_sig", signature)
@@ -135,6 +135,39 @@ public class QobuzApiService {
             this.validFileUrlToken = properties.getUserAuthToken();
         }
         log.info("fileUrl token replaced");
+    }
+
+    public Mono<String> getArtistWithAlbums(String artistId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getQobuzBaseUrl() + "artist/get")
+                .queryParam("app_id", properties.getAppId())
+                .queryParam("artist_id", artistId)
+                .queryParam("type", "artists")
+                .queryParam("extra", "albums")
+                .queryParam("limit", 100)
+                .queryParam("user_auth_token", validSearchToken)
+                .toUriString();
+
+        return webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class)
+                .onErrorResume(e -> Mono.error(new RuntimeException("Ошибка при вызове Qobuz artist/get", e)));
+    }
+
+    public Mono<String> getAlbumById(String albumId) {
+        String url = UriComponentsBuilder.fromUriString(properties.getQobuzBaseUrl() + "album/get")
+                .queryParam("app_id", properties.getAppId())
+                .queryParam("album_id", albumId)
+                .queryParam("type", "albums")
+                .queryParam("limit", 100)
+                .queryParam("user_auth_token", validSearchToken)
+                .toUriString();
+
+        return webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class)
+                .onErrorResume(e -> Mono.error(new RuntimeException("Ошибка при вызове Qobuz album/get", e)));
     }
 
 }

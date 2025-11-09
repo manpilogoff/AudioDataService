@@ -2,6 +2,7 @@ package com.anpilogoff.audioDataService.controller;
 
 import com.anpilogoff.audioDataService.util.JsonStreamingUtils;
 import com.anpilogoff.audioDataService.service.QobuzApiService;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,7 +18,7 @@ public class SearchController {
         this.qobuzApiService = service;
     }
 
-    @GetMapping
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<String> search(
             @RequestParam(value = "query") String query,
             @RequestParam(value = "type", required = false) String type) {
